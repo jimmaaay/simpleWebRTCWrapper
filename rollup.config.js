@@ -11,7 +11,7 @@ export default {
     file: 'dist/simpleWebRTCWrapper.min.js',
     sourcemap: true,
     format: 'umd',
-    banner: '/** @preserve simpleWebRTCWrapper https://github.com/jimmaaay/simple-webrtc-wrapper */',
+    banner: '/** @preserve simpleWebRTCWrapper https://github.com/jimmaaay/simpleWebRTCWrapper */',
   },
   plugins: [
     resolve({
