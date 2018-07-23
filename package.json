@@ -1,0 +1,27 @@
+{
+  "name": "simple-webrtc-wrapper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "browsersync": "browser-sync start --s --index 'index.html' --files 'index.html, dist/**/*.js'",
+    "build": "npm run clean && rollup -c",
+    "clean": "rimraf dist",
+    "watch": "npm run clean && (npm run browsersync & rollup -c --watch)"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.0.0-beta.54",
+    "@babel/preset-env": "^7.0.0-beta.54",
+    "browser-sync": "^2.24.6",
+    "rimraf": "^2.6.2",
+    "rollup": "^0.63.4",
+    "rollup-plugin-babel": "^4.0.0-beta.7",
+    "rollup-plugin-commonjs": "^9.1.3",
+    "rollup-plugin-node-resolve": "^3.3.0",
+    "rollup-plugin-uglify": "^4.0.0",
+    "uglify-js": "^3.4.5"
+  }
+}
