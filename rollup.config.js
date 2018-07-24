@@ -7,7 +7,7 @@ import { minify } from 'uglify-js';
 export default {
   input: 'src/index.js',
   output: {
-    name: 'simpleWebRTCWrapper',
+    name: 'SimpleWebRTCWrapper',
     file: 'dist/simpleWebRTCWrapper.min.js',
     sourcemap: true,
     format: 'umd',
