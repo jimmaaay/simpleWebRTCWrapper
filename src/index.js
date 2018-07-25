@@ -21,16 +21,18 @@ const sdpConstraints = {
   optional: [],
 };
 
-export default class SimpleWebRTCWrapper extends EventEmitter{
+export default class SimpleWebRTCWrapper extends EventEmitter {
   constructor(_) {
     super(_);
+
+    this._dataChannel = false;
 
     const config = {
       iceServers: [
         {
           url: 'stun:' + stunServers[Math.floor(Math.random() * stunServers.length)],
         },
-      ]
+      ],
     };
 
     const webConnection = { 
@@ -41,15 +43,27 @@ export default class SimpleWebRTCWrapper extends EventEmitter{
       ],
     };
     
-    this.dataChannel = false;
     this.computer = new RTCPeerConnection(config, webConnection);
     
-    // fires after peer has run this.__finishCreatingRoom
+    // fires after host has run this.__finishCreatingRoom
     this.computer.addEventListener('datachannel', (e) => {
-      console.log(e);
+      const channel = e.channel || e;
+      this.dataChannel = channel;
     });
 
     this.__finishCreatingRoom = this.__finishCreatingRoom.bind(this);
+  }
+
+  get dataChannel() {
+    return this._dataChannel;
+  }
+
+  set dataChannel(value) {
+    this._dataChannel = value;
+    if (! (this._dataChannel instanceof RTCDataChannel)) return;
+    this._dataChannel.addEventListener('open', (e) => { // TODO: remove event listener after being successful
+      this.emit('connected');
+    });
   }
 
   __finishCreatingRoom(peerOffer) {
@@ -99,7 +113,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter{
             .then(answerDesc => this.computer.setLocalDescription(answerDesc));
         });
       
-      this.computer.addEventListener('icecandidate', (e) => { // TODO: remove event listener
+      this.computer.addEventListener('icecandidate', (e) => { // TODO: remove event listener after being succesful
         if (e.candidate != null) return;
         resolve(btoa(JSON.stringify(this.computer.localDescription)));
       });

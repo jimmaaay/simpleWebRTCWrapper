@@ -14,7 +14,11 @@
 (async () => {
   const connection = new SimpleWebRTCWrapper();
   const createdRoom = await connection.createRoom();
-  createdRoom.finishCreatingRoom(PEER_OFFER)
+  const HOST_OFFER = createdRoom.offer; // send this to the peer
+
+  createdRoom.finishCreatingRoom(PEER_OFFER);
+
+  connection.on('connected', (e) => console.log('connected'));
 })();
 ```
 
@@ -23,6 +27,9 @@
 ```javascript
 (async () => {
   const connection = new SimpleWebRTCWrapper();
-  const joinedRoom = await connection.joinRoom(HOST_OFFER);
+
+  const PEER_OFFER = await connection.joinRoom(HOST_OFFER); // send this to the host
+
+  connection.on('connected', (e) => console.log('connected'));
 })();
 ```
