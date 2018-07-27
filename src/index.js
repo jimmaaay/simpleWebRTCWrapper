@@ -135,18 +135,19 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
   sendObject(obj) {
     if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
     if (typeof obj !== 'object') throw new Error('SimpleWebRTCWrapper: No valid object passed to sendObject');
-    const dataToSend = convertObjectToArrayBuffer(obj);
-    const requestHeaders = Uint8Array(convertObjectToArrayBuffer({
+    const dataToSend = new Uint8Array(convertObjectToArrayBuffer(obj));
+    const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
       type: 'O', // O === Object
       size: dataToSend.byteLength,
     }));
     const requestHeadersSize = requestHeaders.byteLength;
     const { maxChunkSize } = this.options;
-    const maxDataSize = maxDataSize - requestHeadersSize - 1;
+    const maxDataSize = maxChunkSize - requestHeadersSize - 1;
 
     const send = (data, chunkIndex) => {
       const start = maxDataSize * chunkIndex;
       const maxEnd = data.byteLength - start;
+
       const messageSize = maxEnd <= maxDataSize
       ? maxEnd + requestHeadersSize + 1
       : maxDataSize + requestHeadersSize + 1;
@@ -155,12 +156,19 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       ? data.byteLength
       : start + maxDataSize;
 
-      const response = new Uint8Array(messageSize);
+      const message = new Uint8Array(messageSize);
       const toSend = data.slice(start, end);
-      response[0] = requestHeadersSize; // first byte tells how many bytes the headers take up
-      response.set(requestHeaders, 1);
-      response.set(toSend, 1 + requestHeadersSize);
-      console.log(response);
+      message[0] = requestHeadersSize; // first byte tells how many bytes the headers take up
+      message.set(requestHeaders, 1);
+      message.set(toSend, 1 + requestHeadersSize);
+
+      this.dataChannel.send(message);
+      if (end === dataToSend.byteLength) return; // sent
+
+      setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
+        send(data, ++chunkIndex);
+      }, 0);
+
     }
 
     send(dataToSend, 0);
