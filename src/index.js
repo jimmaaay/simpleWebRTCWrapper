@@ -5,6 +5,7 @@ import {
 } from './helpers';
 
 const defaultOptions = {
+  maxChunkSize: 16384, // 16kb
   stunServers: [ // TODO: use npm module that has an upto date list
     'stun.l.google.com:19302',
     'stun1.l.google.com:19302',
@@ -134,7 +135,36 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
   sendObject(obj) {
     if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
     if (typeof obj !== 'object') throw new Error('SimpleWebRTCWrapper: No valid object passed to sendObject');
-    const arrayBuffer = convertObjectToArrayBuffer(obj);
+    const dataToSend = convertObjectToArrayBuffer(obj);
+    const requestHeaders = Uint8Array(convertObjectToArrayBuffer({
+      type: 'O', // O === Object
+      size: dataToSend.byteLength,
+    }));
+    const requestHeadersSize = requestHeaders.byteLength;
+    const { maxChunkSize } = this.options;
+    const maxDataSize = maxDataSize - requestHeadersSize - 1;
+
+    const send = (data, chunkIndex) => {
+      const start = maxDataSize * chunkIndex;
+      const maxEnd = data.byteLength - start;
+      const messageSize = maxEnd <= maxDataSize
+      ? maxEnd + requestHeadersSize + 1
+      : maxDataSize + requestHeadersSize + 1;
+
+      const end = maxEnd <= maxDataSize
+      ? data.byteLength
+      : start + maxDataSize;
+
+      const response = new Uint8Array(messageSize);
+      const toSend = data.slice(start, end);
+      response[0] = requestHeadersSize; // first byte tells how many bytes the headers take up
+      response.set(requestHeaders, 1);
+      response.set(toSend, 1 + requestHeadersSize);
+      console.log(response);
+    }
+
+    send(dataToSend, 0);
+
 
   }
 
