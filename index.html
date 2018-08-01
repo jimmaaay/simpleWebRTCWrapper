@@ -8,5 +8,94 @@
 </head>
 <body>
   <script src="dist/simpleWebRTCWrapper.min.js"></script>
+  <main>
+    <section>
+      <h1>Create</h1>
+      <form action="" id="create" data-step="0">
+        <p>&nbsp;</p>
+        <input type="text" readOnly />
+        <button type="submit">Create Offer</button>
+      </form>
+    </section>
+    <section>
+      <h1>Join</h1>
+      <form action="" id="join" data-step="0">
+        <p>Paste the hosts' offer</p>
+        <input type="text" />
+        <button type="submit">Confirm</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    const create = {
+      connection: new SimpleWebRTCWrapper(),
+      form: document.querySelector('#create'),
+      button: document.querySelector('#create button'),
+      input: document.querySelector('#create input'),
+      description: document.querySelector('#create p'),
+      room: false,
+    };
+
+    const join = {
+      connection: new SimpleWebRTCWrapper(),
+      form: document.querySelector('#join'),
+      button: document.querySelector('#join button'),
+      input: document.querySelector('#join input'),
+      description: document.querySelector('#join p'),
+      room: false,
+    };
+
+    create.connection.on('connected', (e) => {
+      console.log('create connected');
+    });
+
+    join.connection.on('connected', (e) => {
+      console.log('join connected');
+    });
+
+    create.connection.on('message', (e) => {
+      console.log(e);
+    });
+
+    join.connection.on('message', (e) => {
+      console.log(e);
+    });
+
+    create.form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const step = parseInt(create.form.getAttribute('data-step'), 10);
+      if (step === 0) {
+        create.button.disabled = true;
+        create.room = await create.connection.createRoom();
+        create.input.value = create.room.offer;
+        create.description.textContent = 'Send offer to peer';
+        create.button.disabled = false;
+        create.button.textContent = 'Sent offer';
+        create.form.setAttribute('data-step', 1);
+      } else if (step === 1) {
+        create.input.value = '';
+        create.input.readOnly = false;
+        create.description.textContent = 'Paste peer response';
+        create.button.textContent = 'Confirm';
+        create.form.setAttribute('data-step', 2);
+      } else {
+        create.room.finishCreatingRoom(create.input.value);
+      }
+    });
+
+    join.form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const step = parseInt(join.form.getAttribute('data-step'), 10);
+      if (step === 0) {
+        join.button.disabled = true;
+        const PEER_OFFER = await join.connection.joinRoom(join.input.value);
+        join.input.value = PEER_OFFER;
+        join.input.readOnly = true;
+        join.form.setAttribute('data-step', 1);
+        join.description.textContent = 'Send response offer to host';
+        join.button.textContent = 'Sent offer';
+      }
+    });
+  </script>
 </body>
 </html>
