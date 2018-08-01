@@ -7,7 +7,7 @@
     "browsersync": "browser-sync start --s --index 'index.html' --files 'index.html, dist/**/*.js'",
     "build": "npm run clean && rollup -c",
     "clean": "rimraf dist",
-    "watch": "npm run clean && (npm run browsersync & rollup -c --watch)"
+    "dev": "npm run clean && (npm run browsersync & rollup -c --watch)"
   },
   "keywords": [],
   "author": "",
