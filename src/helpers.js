@@ -13,3 +13,7 @@ export const arrayBufferToObject = (arrayBuffer) => {
   const string = decoder.decode(view);
   return JSON.parse(string);
 }
+
+export const intRange = (min, max) => {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
