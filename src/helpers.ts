@@ -1,7 +1,7 @@
 // https://stackoverflow.com/questions/34057127/how-to-transfer-large-objects-using-postmessage-of-webworker
 export const convertObjectToArrayBuffer = (obj) => {
   const string = JSON.stringify(obj);
-  const { buffer } = new TextEncoder(document.characterSet.toLowerCase()).encode(string);
+  const { buffer } = new TextEncoder().encode(string);
   return buffer;
 }
 

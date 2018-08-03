@@ -7,7 +7,8 @@
     "browsersync": "browser-sync start --s --index 'index.html' --files 'index.html, dist/**/*.js'",
     "build": "npm run clean && rollup -c",
     "clean": "rimraf dist",
-    "dev": "npm run clean && (npm run browsersync & rollup -c --watch)"
+    "rollup": "rollup -c --watch",
+    "dev": "npm run clean && npm-run-all --parallel browsersync rollup"
   },
   "keywords": [],
   "author": "",
@@ -15,13 +16,17 @@
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.54",
     "@babel/preset-env": "^7.0.0-beta.54",
+    "@types/webrtc": "0.0.23",
     "browser-sync": "^2.24.6",
+    "npm-run-all": "^4.1.3",
     "rimraf": "^2.6.2",
     "rollup": "^0.63.4",
     "rollup-plugin-babel": "^4.0.0-beta.7",
     "rollup-plugin-commonjs": "^9.1.3",
     "rollup-plugin-node-resolve": "^3.3.0",
+    "rollup-plugin-typescript2": "^0.16.1",
     "rollup-plugin-uglify": "^4.0.0",
+    "typescript": "^3.0.1",
     "uglify-js": "^3.4.5"
   },
   "dependencies": {

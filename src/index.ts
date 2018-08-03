@@ -21,7 +21,20 @@ const defaultOptions = {
 };
 
 
+interface Options {
+  maxChunkSize: number,
+  stunServers: Array<string>,
+  sdpConstraints: any,
+};
+
+
 export default class SimpleWebRTCWrapper extends EventEmitter {
+  _dataChannel: any;
+  _connected: boolean;
+  _objectParts: any;
+  options: Options;
+  computer: any;
+
   constructor(options) {
     super();
 
@@ -30,14 +43,16 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     this._objectParts = {}; // store parts of an object to put together
 
     this.options = { ...defaultOptions, ...options };
+
+    const stunServer = this.options.stunServers[Math.floor(Math.random() * this.options.stunServers.length)];
     
     this.computer = new RTCPeerConnection({
       iceServers: [
         {
-          url: 'stun:' + this.options.stunServers[Math.floor(Math.random() * this.options.stunServers.length)],
+          urls: 'stun:' + stunServer,
         },
       ],
-    }, { optional: [{ DtlsSrtpKeyAgreement: true, }] });
+    });
     
     // fires after host has run this._finishCreatingRoom
     this.computer.addEventListener('datachannel', (e) => {
@@ -56,7 +71,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
 
   set dataChannel(value) {
     this._dataChannel = value;
-    if (! (this._dataChannel instanceof RTCDataChannel)) return;
+    if (this._dataChannel === false) return;
     this._dataChannel.addEventListener('open', this._dataChannelOpen);
     this._dataChannel.addEventListener('message', this._dataChannelMessage);
   }
@@ -93,7 +108,13 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       this._objectParts[id].chunks.push(dataBuffer);
 
       if (this._objectParts[id].total === size) {
-        const array = new Uint8Array(...this._objectParts[id].chunks);
+        // const array = new Uint8Array(...this._objectParts[id].chunks);
+        const array = new Uint8Array(size);
+        let filledAmount = 0;
+        this._objectParts[id].chunks.forEach(chunk => {
+          array.set(chunk, filledAmount);
+          filledAmount += chunk.byteLength;
+        });
         const obj = arrayBufferToObject(array);
         this.emit('message', obj);
         delete this._objectParts[id];
