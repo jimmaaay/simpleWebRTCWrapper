@@ -12,6 +12,9 @@
     "moduleResolution": "node",
     "types": [
       "webrtc"
+    ],
+    "typeRoots": [
+      "node_modules/@types"
     ]
   }
 }

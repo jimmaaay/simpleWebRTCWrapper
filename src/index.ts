@@ -27,13 +27,22 @@ interface Options {
   sdpConstraints: any,
 };
 
+interface ObjectPart {
+  total: number,
+  chunks: Array<Uint8Array>,
+};
+
+interface ObjectParts {
+  [key: string]: ObjectPart,
+};
+
 
 export default class SimpleWebRTCWrapper extends EventEmitter {
-  _dataChannel: any;
+  _dataChannel: false | RTCDataChannel;
   _connected: boolean;
-  _objectParts: any;
+  _objectParts: ObjectParts;
   options: Options;
-  computer: any;
+  computer: RTCPeerConnection;
 
   constructor(options) {
     super();
@@ -55,43 +64,43 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     });
     
     // fires after host has run this._finishCreatingRoom
-    this.computer.addEventListener('datachannel', (e) => {
-      const channel = e.channel || e;
+    this.computer.ondatachannel = ({ channel }) => {
       this.dataChannel = channel;
-    });
+    }
 
     this._finishCreatingRoom = this._finishCreatingRoom.bind(this);
     this._dataChannelOpen = this._dataChannelOpen.bind(this);
     this._dataChannelMessage = this._dataChannelMessage.bind(this);
   }
 
-  get dataChannel() {
+  get dataChannel(): false | RTCDataChannel {
     return this._dataChannel;
   }
 
-  set dataChannel(value) {
+  set dataChannel(value: false | RTCDataChannel) {
     this._dataChannel = value;
     if (this._dataChannel === false) return;
     this._dataChannel.addEventListener('open', this._dataChannelOpen);
     this._dataChannel.addEventListener('message', this._dataChannelMessage);
   }
 
-  _finishCreatingRoom(peerOffer) {
+  _finishCreatingRoom(peerOffer): void {
     const obj = JSON.parse(atob(peerOffer));
     const answer = new RTCSessionDescription(obj);
     this.computer.setRemoteDescription(answer);
   }
 
-  _dataChannelOpen() {
+  _dataChannelOpen(): void {
+    if (this._dataChannel === false) return;
     this._connected = true;
     this._dataChannel.removeEventListener('open', this._dataChannelOpen);
     this.emit('connected');
   }
 
-  _dataChannelMessage(e) {
+  _dataChannelMessage(e): void {
     const data = new Uint8Array(e.data);
     const headerSize = data[0];
-    const header = arrayBufferToObject(data.slice(1, headerSize + 1));
+    const header = arrayBufferToObject(data.slice(1, headerSize + 1).buffer);
     const dataBuffer = data.slice(headerSize + 1);
     const { size, id } = header;
 
@@ -108,14 +117,13 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       this._objectParts[id].chunks.push(dataBuffer);
 
       if (this._objectParts[id].total === size) {
-        // const array = new Uint8Array(...this._objectParts[id].chunks);
         const array = new Uint8Array(size);
         let filledAmount = 0;
         this._objectParts[id].chunks.forEach(chunk => {
           array.set(chunk, filledAmount);
           filledAmount += chunk.byteLength;
         });
-        const obj = arrayBufferToObject(array);
+        const obj = arrayBufferToObject(array.buffer);
         this.emit('message', obj);
         delete this._objectParts[id];
       }
@@ -145,9 +153,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
         });
       }
 
-      this.dataChannel = this.computer.createDataChannel('webrtc', {
-        reliable: true,
-      });
+      this.dataChannel = this.computer.createDataChannel('webrtc');
       this.computer.addEventListener('icecandidate', onIcecandidate);
     
       this.computer.createOffer()
@@ -219,7 +225,9 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       message.set(requestHeaders, 1);
       message.set(toSend, 1 + requestHeadersSize);
 
+      if (this.dataChannel === false) throw new Error('SimpleWebRTCWrapper: No data channel');
       this.dataChannel.send(message);
+
       if (end === dataToSend.byteLength) return; // sent
 
       setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
