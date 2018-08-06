@@ -4,6 +4,12 @@ import {
   arrayBufferToObject,
   intRange,
 } from './helpers';
+import {
+  UnknownObject,
+  Options,
+  ObjectParts,
+  CreateRoomObject,
+} from './typings';
 
 const defaultOptions = {
   maxChunkSize: 16384, // 16kb
@@ -19,23 +25,6 @@ const defaultOptions = {
     optional: [],
   },
 };
-
-
-interface Options {
-  maxChunkSize: number,
-  stunServers: Array<string>,
-  sdpConstraints: any,
-};
-
-interface ObjectPart {
-  total: number,
-  chunks: Array<Uint8Array>,
-};
-
-interface ObjectParts {
-  [key: string]: ObjectPart,
-};
-
 
 export default class SimpleWebRTCWrapper extends EventEmitter {
   _dataChannel: false | RTCDataChannel;
@@ -84,7 +73,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     this._dataChannel.addEventListener('message', this._dataChannelMessage);
   }
 
-  _finishCreatingRoom(peerOffer): void {
+  _finishCreatingRoom(peerOffer: string): void {
     const obj = JSON.parse(atob(peerOffer));
     const answer = new RTCSessionDescription(obj);
     this.computer.setRemoteDescription(answer);
@@ -97,7 +86,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     this.emit('connected');
   }
 
-  _dataChannelMessage(e): void {
+  _dataChannelMessage(e: MessageEvent): void {
     const data = new Uint8Array(e.data);
     const headerSize = data[0];
     const header = arrayBufferToObject(data.slice(1, headerSize + 1).buffer);
@@ -119,7 +108,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       if (this._objectParts[id].total === size) {
         const array = new Uint8Array(size);
         let filledAmount = 0;
-        this._objectParts[id].chunks.forEach(chunk => {
+        this._objectParts[id].chunks.forEach((chunk: Uint8Array) => {
           array.set(chunk, filledAmount);
           filledAmount += chunk.byteLength;
         });
@@ -141,9 +130,9 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
   }
 
 
-  createRoom() { // returns a promise resolves to a web rtc connection description, which then will need to be used by the joinRoom function
+  createRoom(): Promise<CreateRoomObject> { // returns a promise resolves to a web rtc connection description, which then will need to be used by the joinRoom function
     return new Promise((resolve, reject) => {
-      const onIcecandidate = (e) => {
+      const onIcecandidate = (e: RTCPeerConnectionIceEvent): void => {
         if (e.candidate != null) return;
         const json = JSON.stringify(this.computer.localDescription.toJSON());
         this.computer.removeEventListener('icecandidate', onIcecandidate);
@@ -163,9 +152,9 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
   }
 
 
-  joinRoom(hostOffer) { // returns a promise which resolves to web rtc connection description which the host (person that called createRoom) needs to use to start the connection
+  joinRoom(hostOffer: string): Promise<string> { // returns a promise which resolves to web rtc connection description which the host (person that called createRoom) needs to use to start the connection
     return new Promise((resolve, reject) => {
-      const onIcecandidate = (e) => {
+      const onIcecandidate = (e: RTCPeerConnectionIceEvent): void => {
         if (e.candidate != null) return;
         this.computer.removeEventListener('icecandidate', onIcecandidate);
         resolve(btoa(JSON.stringify(this.computer.localDescription)));
@@ -193,7 +182,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     });
   }
 
-  sendObject(obj) {
+  sendObject(obj: UnknownObject): void {
     if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
     if (typeof obj !== 'object') throw new Error('SimpleWebRTCWrapper: No valid object passed to sendObject');
     const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
@@ -207,7 +196,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     const { maxChunkSize } = this.options;
     const maxDataSize = maxChunkSize - requestHeadersSize - 1;
 
-    const send = (data, chunkIndex) => {
+    const send = (data: Uint8Array, chunkIndex: number): void => {
       const start = maxDataSize * chunkIndex;
       const maxEnd = data.byteLength - start;
 
@@ -240,7 +229,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
 
   }
 
-  sendFile(file) {
+  sendFile(file: File) {
     if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
     if (! (file instanceof File)) throw new Error('SimpleWebRTCWrapper: No valid file passed to sendFile');
   }

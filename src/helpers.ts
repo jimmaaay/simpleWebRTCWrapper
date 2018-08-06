@@ -1,6 +1,4 @@
-interface UnknownObject {
-  [key: string]: any,
-}
+import { UnknownObject } from './typings';
 
 // https://stackoverflow.com/questions/34057127/how-to-transfer-large-objects-using-postmessage-of-webworker
 export const convertObjectToArrayBuffer = (obj: UnknownObject): ArrayBuffer => {
