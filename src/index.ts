@@ -1,3 +1,10 @@
+/**
+ * TODO: See if it's worth setting up workers for the below:
+ * - Reading file contents
+ * - Converting an object to an array buffer
+ * - Converting an array buffer to an object
+ */
+
 import EventEmitter from 'eventemitter3';
 import {
   convertObjectToArrayBuffer,
@@ -131,7 +138,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
 
 
   createRoom(): Promise<CreateRoomObject> { // returns a promise resolves to a web rtc connection description, which then will need to be used by the joinRoom function
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => { // TODO: reject if takes too long to create a room?
       const onIcecandidate = (e: RTCPeerConnectionIceEvent): void => {
         if (e.candidate != null) return;
         const json = JSON.stringify(this.computer.localDescription.toJSON());
@@ -229,9 +236,61 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
 
   }
 
-  sendFile(file: File) {
+  sendFile(file: File): void {
     if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
     if (! (file instanceof File)) throw new Error('SimpleWebRTCWrapper: No valid file passed to sendFile');
+
+    const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
+    const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
+      id,
+      type: 'F',
+      size: file.size,
+      name: file.name,
+    }));
+
+    const requestHeadersSize = requestHeaders.byteLength;
+    const { maxChunkSize } = this.options;
+    const maxDataSize = maxChunkSize - requestHeadersSize - 1;
+    const reader = new FileReader();
+
+    const send = (file: File, chunk: number): void => {
+      const start = maxDataSize * chunk;
+      const maxEnd = file.size - start;
+
+      const messageSize = maxEnd <= maxDataSize
+      ? maxEnd + requestHeadersSize + 1
+      : maxDataSize + requestHeadersSize + 1;
+
+      const end = maxEnd <= maxDataSize
+      ? file.size
+      : start + maxDataSize;
+
+      reader.onload = () => {
+        if (! (reader.result instanceof ArrayBuffer)) {
+          throw new Error('SimpleWebRTCWrapper: issue when reading file');
+        }
+        const message = new Uint8Array(messageSize);
+        const data = new Uint8Array(reader.result);
+        message[0] = requestHeadersSize;
+        message.set(requestHeaders, 1);
+        message.set(data, 1 + requestHeadersSize);
+
+        if (this.dataChannel === false) throw new Error('SimpleWebRTCWrapper: No data channel');
+        this.dataChannel.send(message);
+
+        if (end === file.size) return; // sent
+
+        setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
+          send(file, ++chunk);
+        }, 0);
+
+      }
+
+      reader.readAsArrayBuffer(file.slice(start, end));
+    }
+
+    send(file, 0);
+
   }
 
 
