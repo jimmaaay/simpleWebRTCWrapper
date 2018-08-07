@@ -146,9 +146,9 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
       }
 
     } else if (header.type === 'F') {
-      const { filename } = header;
+      const { name } = header;
       this.emit('fileChunk', {
-        filename,
+        name,
         id,
         size,
         chunk: dataBuffer,
