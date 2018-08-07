@@ -1,8 +1,8 @@
 {
   "name": "simple-webrtc-wrapper",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/simpleWebRTCWrapper.min.js",
   "scripts": {
     "browsersync": "browser-sync start --s --index 'index.html' --files 'index.html, dist/**/*.js'",
     "build": "npm run clean && rollup -c",

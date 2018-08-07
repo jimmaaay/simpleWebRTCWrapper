@@ -45,21 +45,27 @@
       room: false,
     };
 
-    create.connection.on('connected', (e) => {
-      console.log('create connected');
-    });
+    create.connection
+      .on('connected', (e) => {
+        console.log('create connected');
+      })
+      .on('message', (e) => {
+        console.log('create recieved', e);
+      })
+      .on('fileChunk', (e) => {
+        console.log('create recieved chunk', e);
+      });
 
-    join.connection.on('connected', (e) => {
-      console.log('join connected');
-    });
-
-    create.connection.on('message', (e) => {
-      console.log(e);
-    });
-
-    join.connection.on('message', (e) => {
-      console.log(e);
-    });
+    join.connection
+      .on('connected', (e) => {
+        console.log('join connected');
+      })
+      .on('message', (e) => {
+        console.log('join recieved', e);
+      })
+      .on('fileChunk', (e) => {
+        console.log('join recieved chunk', e);
+      });
 
     create.form.addEventListener('submit', async (e) => {
       e.preventDefault();

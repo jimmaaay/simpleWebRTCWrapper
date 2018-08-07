@@ -18,7 +18,10 @@
 
   createdRoom.finishCreatingRoom(PEER_OFFER);
 
-  connection.on('connected', (e) => console.log('connected'));
+  connection
+    .on('connected', (e) => console.log('connected'))
+    .on('message', (e) => console.log('recieved', e))
+    .on('fileChunk', (e) => console.log('recieved chunk', e));
 })();
 ```
 
@@ -30,6 +33,9 @@
 
   const PEER_OFFER = await connection.joinRoom(HOST_OFFER); // send this to the host
 
-  connection.on('connected', (e) => console.log('connected'));
+  connection
+    .on('connected', (e) => console.log('connected'))
+    .on('message', (e) => console.log('recieved', e))
+    .on('fileChunk', (e) => console.log('recieved chunk', e));
 })();
 ```

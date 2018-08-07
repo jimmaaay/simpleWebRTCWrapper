@@ -67,6 +67,9 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     this._finishCreatingRoom = this._finishCreatingRoom.bind(this);
     this._dataChannelOpen = this._dataChannelOpen.bind(this);
     this._dataChannelMessage = this._dataChannelMessage.bind(this);
+    this._dataChannelClose = this._dataChannelClose.bind(this);
+    this._dataChannelError = this._dataChannelError.bind(this);
+    // this._onBrowserClose = this._onBrowserClose.bind(this);
   }
 
   get dataChannel(): false | RTCDataChannel {
@@ -78,6 +81,10 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     if (this._dataChannel === false) return;
     this._dataChannel.addEventListener('open', this._dataChannelOpen);
     this._dataChannel.addEventListener('message', this._dataChannelMessage);
+    this._dataChannel.addEventListener('close', this._dataChannelClose);
+    this._dataChannel.addEventListener('error', this._dataChannelError);
+
+    // window.addEventListener('beforeunload', this._onBrowserClose);
   }
 
   _finishCreatingRoom(peerOffer: string): void {
@@ -86,11 +93,25 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     this.computer.setRemoteDescription(answer);
   }
 
+  // _onBrowserClose(e): void {
+  //   console.log(JSON.stringify(e));
+  // }
+
   _dataChannelOpen(): void {
     if (this._dataChannel === false) return;
     this._connected = true;
     this._dataChannel.removeEventListener('open', this._dataChannelOpen);
     this.emit('connected');
+  }
+
+  _dataChannelClose(): void {
+    this.dataChannel = false;
+    // window.removeEventListener('beforeunload', this._onBrowserClose);
+    this.emit('connection-closed');
+  }
+
+  _dataChannelError(err): void {
+    this.emit('error', err);
   }
 
   _dataChannelMessage(e: MessageEvent): void {
@@ -189,107 +210,118 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
     });
   }
 
-  sendObject(obj: UnknownObject): void {
-    if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
-    if (typeof obj !== 'object') throw new Error('SimpleWebRTCWrapper: No valid object passed to sendObject');
-    const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
-    const dataToSend = new Uint8Array(convertObjectToArrayBuffer(obj));
-    const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
-      id,
-      type: 'O', // O === Object
-      size: dataToSend.byteLength,
-    }));
-    const requestHeadersSize = requestHeaders.byteLength;
-    const { maxChunkSize } = this.options;
-    const maxDataSize = maxChunkSize - requestHeadersSize - 1;
+  sendObject(obj: UnknownObject): Promise<undefined> {
+    return new Promise((resolve, reject) => {
+    
+      if (this._connected === false) return reject(new Error('SimpleWebRTCWrapper: No valid connection'));
+      if (typeof obj !== 'object') return reject(new Error('SimpleWebRTCWrapper: No valid object passed to sendObject'));
+      const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
+      const dataToSend = new Uint8Array(convertObjectToArrayBuffer(obj));
+      const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
+        id,
+        type: 'O', // O === Object
+        size: dataToSend.byteLength,
+      }));
+      const requestHeadersSize = requestHeaders.byteLength;
+      const { maxChunkSize } = this.options;
+      const maxDataSize = maxChunkSize - requestHeadersSize - 1;
 
-    const send = (data: Uint8Array, chunkIndex: number): void => {
-      const start = maxDataSize * chunkIndex;
-      const maxEnd = data.byteLength - start;
+      const send = (data: Uint8Array, chunkIndex: number): void => {
+        const start = maxDataSize * chunkIndex;
+        const maxEnd = data.byteLength - start;
 
-      const messageSize = maxEnd <= maxDataSize
-      ? maxEnd + requestHeadersSize + 1
-      : maxDataSize + requestHeadersSize + 1;
+        const messageSize = maxEnd <= maxDataSize
+        ? maxEnd + requestHeadersSize + 1
+        : maxDataSize + requestHeadersSize + 1;
 
-      const end = maxEnd <= maxDataSize
-      ? data.byteLength
-      : start + maxDataSize;
+        const end = maxEnd <= maxDataSize
+        ? data.byteLength
+        : start + maxDataSize;
 
-      const message = new Uint8Array(messageSize);
-      const toSend = data.slice(start, end);
-      message[0] = requestHeadersSize; // first byte tells how many bytes the headers take up
-      message.set(requestHeaders, 1);
-      message.set(toSend, 1 + requestHeadersSize);
-
-      if (this.dataChannel === false) throw new Error('SimpleWebRTCWrapper: No data channel');
-      this.dataChannel.send(message);
-
-      if (end === dataToSend.byteLength) return; // sent
-
-      setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
-        send(data, ++chunkIndex);
-      }, 0);
-
-    }
-
-    send(dataToSend, 0);
-
-  }
-
-  sendFile(file: File): void {
-    if (this._connected === false) throw new Error('SimpleWebRTCWrapper: No valid connection');
-    if (! (file instanceof File)) throw new Error('SimpleWebRTCWrapper: No valid file passed to sendFile');
-
-    const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
-    const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
-      id,
-      type: 'F',
-      size: file.size,
-      name: file.name,
-    }));
-
-    const requestHeadersSize = requestHeaders.byteLength;
-    const { maxChunkSize } = this.options;
-    const maxDataSize = maxChunkSize - requestHeadersSize - 1;
-    const reader = new FileReader();
-
-    const send = (file: File, chunk: number): void => {
-      const start = maxDataSize * chunk;
-      const maxEnd = file.size - start;
-
-      const messageSize = maxEnd <= maxDataSize
-      ? maxEnd + requestHeadersSize + 1
-      : maxDataSize + requestHeadersSize + 1;
-
-      const end = maxEnd <= maxDataSize
-      ? file.size
-      : start + maxDataSize;
-
-      reader.onload = () => {
-        if (! (reader.result instanceof ArrayBuffer)) {
-          throw new Error('SimpleWebRTCWrapper: issue when reading file');
-        }
         const message = new Uint8Array(messageSize);
-        const data = new Uint8Array(reader.result);
-        message[0] = requestHeadersSize;
+        const toSend = data.slice(start, end);
+        message[0] = requestHeadersSize; // first byte tells how many bytes the headers take up
         message.set(requestHeaders, 1);
-        message.set(data, 1 + requestHeadersSize);
+        message.set(toSend, 1 + requestHeadersSize);
 
-        if (this.dataChannel === false) throw new Error('SimpleWebRTCWrapper: No data channel');
+        if (this.dataChannel === false) return reject(new Error('SimpleWebRTCWrapper: No data channel'));
         this.dataChannel.send(message);
 
-        if (end === file.size) return; // sent
+        if (end === dataToSend.byteLength) return resolve(); // sent
 
         setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
-          send(file, ++chunk);
+          send(data, ++chunkIndex);
         }, 0);
 
       }
 
-      reader.readAsArrayBuffer(file.slice(start, end));
-    }
+      send(dataToSend, 0);
 
-    send(file, 0);
+    });
+
+  }
+
+  sendFile(file: File): Promise<undefined> {
+    return new Promise((resolve, reject) => {
+      
+      if (this._connected === false) return reject(new Error('SimpleWebRTCWrapper: No valid connection'));
+      if (! (file instanceof File)) return reject(new Error('SimpleWebRTCWrapper: No valid file passed to sendFile'));
+
+      const id = `${Math.floor(performance.now())}__${intRange(0, 9999999999)}`;
+      const requestHeaders = new Uint8Array(convertObjectToArrayBuffer({
+        id,
+        type: 'F',
+        size: file.size,
+        name: file.name,
+      }));
+
+      const requestHeadersSize = requestHeaders.byteLength;
+      const { maxChunkSize } = this.options;
+      const maxDataSize = maxChunkSize - requestHeadersSize - 1;
+      const reader = new FileReader();
+
+      const send = (file: File, chunk: number): void => {
+        const start = maxDataSize * chunk;
+        const maxEnd = file.size - start;
+
+        const messageSize = maxEnd <= maxDataSize
+        ? maxEnd + requestHeadersSize + 1
+        : maxDataSize + requestHeadersSize + 1;
+
+        const end = maxEnd <= maxDataSize
+        ? file.size
+        : start + maxDataSize;
+
+        reader.onload = () => {
+          if (! (reader.result instanceof ArrayBuffer)) {
+            return reject(new Error('SimpleWebRTCWrapper: issue when reading file'));
+          }
+          const message = new Uint8Array(messageSize);
+          const data = new Uint8Array(reader.result);
+          message[0] = requestHeadersSize;
+          message.set(requestHeaders, 1);
+          message.set(data, 1 + requestHeadersSize);
+
+          if (this.dataChannel === false) {
+            return reject(new Error('SimpleWebRTCWrapper: No data channel'));
+          }
+
+          this.dataChannel.send(message);
+
+          if (end === file.size) return resolve();
+
+          setTimeout(() => { // TODO: may want to set timeout to throttle sending data?
+            send(file, ++chunk);
+          }, 0);
+
+        }
+
+        reader.readAsArrayBuffer(file.slice(start, end));
+      }
+
+      send(file, 0);
+
+    });
 
   }
 
