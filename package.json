@@ -1,6 +1,6 @@
 {
   "name": "simple-webrtc-wrapper",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
   "main": "dist/simpleWebRTCWrapper.min.js",
   "homepage": "https://github.com/jimmaaay/simpleWebRTCWrapper",
