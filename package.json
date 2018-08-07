@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "",
   "main": "dist/simpleWebRTCWrapper.min.js",
+  "homepage": "https://github.com/jimmaaay/simpleWebRTCWrapper",
   "scripts": {
     "browsersync": "browser-sync start --s --index 'index.html' --files 'index.html, dist/**/*.js'",
     "build": "npm run clean && rollup -c",
@@ -12,7 +13,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.0.0-beta.54",
     "@babel/preset-env": "^7.0.0-beta.54",
