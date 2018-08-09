@@ -107,7 +107,7 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
   _dataChannelClose(): void {
     this.dataChannel = false;
     // window.removeEventListener('beforeunload', this._onBrowserClose);
-    this.emit('connection-closed');
+    this.emit('disconnected');
   }
 
   _dataChannelError(err): void {
@@ -323,6 +323,10 @@ export default class SimpleWebRTCWrapper extends EventEmitter {
 
     });
 
+  }
+
+  disconnect(): void {
+    this._dataChannelClose();
   }
 
 

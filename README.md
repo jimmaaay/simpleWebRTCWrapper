@@ -40,11 +40,12 @@ const connection = new SimpleWebRTCWrapper({
 * `joinRoom(hostOffer)` - Returns a promise which resolves to a string which needs to be given to the host to finish creating the connection
 * `sendObject(object)` - Returns a promise which resolves when everything in enqued to send over the connection
 * `sendFile(file)` - Returns a promise which resolves when everything in enqued to send over the connection
+* `disconnect()` - Closes the connection
 
 ## Events
 
 * `connected` - Fired when the connected to the peer
-* `connection-closed` - Fired when the connection is closed
+* `disconnected` - Fired when the connection is closed
 * `error` - Fired when an error event is fired from the data channel
 * `message` - Fired when an object is recieved from the peer
 * `fileChunk` - Fired when a file chunk is recieved from the peer
